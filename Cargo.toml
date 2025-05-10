@@ -1,11 +1,11 @@
 [package]
-name = "vibe_coding"
+name = "thrustbench"
 version = "0.1.0"
-edition = "2021"
-description = "Performance benchmark tool for HTTP/TCP/UDS server APIs"
+edition = "2024"
+description = "High-performance benchmark tool for HTTP/TCP/UDS server APIs"
 
 [[bin]]
-name = "vibe"
+name = "thrustbench"
 path = "src/main.rs"
 
 [[bench]]

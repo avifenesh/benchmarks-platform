@@ -521,7 +521,7 @@ fn ui(f: &mut Frame, app_state: &Arc<Mutex<AppState>>) {
     }).collect::<Vec<_>>();
     
     let tabs = Tabs::new(titles)
-        .block(Block::default().borders(Borders::ALL).title("Vibe Benchmark Tool"))
+        .block(Block::default().borders(Borders::ALL).title("ThrustBench Performance Tool"))
         .select(match state.page {
             Page::Http => 0,
             Page::Tcp => 1,

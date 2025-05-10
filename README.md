@@ -1,56 +1,71 @@
-#  Rust Performance Benchmark Tool
+# ThrustBench - High Performance Benchmark Tool
 
-Vibe is a high-performance benchmark tool for testing HTTP, TCP, and Unix Domain Socket (UDS) server APIs. It allows you to simulate concurrent connections and measure performance metrics such as requests per second, response times, and throughput.
+ThrustBench is a high-performance benchmark tool for testing HTTP, TCP, and Unix Domain Socket (UDS) server APIs. It allows you to simulate concurrent connections and measure performance metrics such as requests per second, response times, and throughput.
 
 ## Features
 
-- Benchmark HTTP servers with customizable methods, headers, and body content
-- Benchmark TCP servers with configurable data payloads
-- Benchmark Unix Domain Socket servers
-- Set concurrency level, number of requests, and test duration
-- Detailed performance reports including latency percentiles (p50, p90, p95, p99)
-- Colorful progress display with ETA
-- JSON output option for programmatic analysis
+- **Multiple Protocol Support**
+  - Benchmark HTTP servers with customizable methods, headers, and body content
+  - Benchmark TCP servers with configurable data payloads
+  - Benchmark Unix Domain Socket servers
+- **Dual Interface**
+  - Command-line interface for scripting and quick tests
+  - Interactive TUI (Text User Interface) for easier configuration
+- **Comprehensive Metrics**
+  - Detailed performance reports including latency percentiles (p50, p90, p95, p99)
+  - Colorful progress display with ETA
+  - JSON output option for programmatic analysis
 
 ## Installation
 
 ```bash
 cargo install --path .
+# Or simply build
+cargo build --release
 ```
 
 ## Usage
+
+### TUI Mode
+
+```bash
+# Launch the interactive TUI
+thrustbench --tui
+```
+
+### CLI Mode
 
 ### HTTP Benchmarking
 
 ```bash
 # Basic GET request with 10 concurrent connections and 1000 total requests
-vibe http http://example.com -c 10 -r 1000
+thrustbench http http://example.com -c 10 -r 1000
 
 # POST request with custom headers and body
-vibe http https://api.example.com/users -m POST \
+thrustbench http https://api.example.com/users -m POST \
   -h "Content-Type: application/json" \
   -h "Authorization: Bearer token123" \
   -b '{"name": "Test User", "email": "test@example.com"}'
 
 # Benchmark for 30 seconds with connection keep-alive
-vibe http http://example.com -c 50 -d 30 --keep-alive
+thrustbench http http://example.com -c 50 -d 30 --keep-alive
 ```
 
 ### TCP Benchmarking
 
 ```bash
 # Simple TCP benchmark
-vibe tcp 127.0.0.1:6379 -d "PING\r\n" -e "PONG"
+thrustbench tcp 127.0.0.1:6379 -d "PING\r\n" -e "PONG"
 
 # Benchmark with data from a file
-vibe tcp 127.0.0.1:5000 --data-file ./payload.bin -c 20
+thrustbench tcp 127.0.0.1:5000 --data-file ./payload.bin -c 20
 ```
 
 ### Unix Domain Socket Benchmarking
 
 ```bash
 # Benchmark a UDS server
-vibe uds /tmp/app.sock -d "GET /stats" -e "ok"
+thrustbench uds /tmp/app.sock -d "GET /stats" -e "ok"
 ```
 
 ### Common Options

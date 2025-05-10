@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use tokio::runtime::Runtime;
 use std::time::Duration;
-use vibe_coding::config::{HttpConfig, TcpConfig, UdsConfig};
-use vibe_coding::runner::{HttpRunner, TcpRunner, UdsRunner};
+use thrustbench::config::{HttpConfig, TcpConfig, UdsConfig};
+use thrustbench::runner::{HttpRunner, TcpRunner, UdsRunner};
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::task;
@@ -141,7 +141,7 @@ fn bench_uds(c: &mut Criterion) {
     
     // Setup a simple UDS echo server
     let rt = Runtime::new().unwrap();
-    let socket_path = "/tmp/vibe_benchmark.sock";
+    let socket_path = "/tmp/thrustbench.sock";
     
     // Remove socket if it exists
     let _ = fs::remove_file(socket_path);
