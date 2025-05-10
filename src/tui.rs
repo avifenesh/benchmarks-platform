@@ -16,6 +16,10 @@ use tokio::sync::Mutex;
 use tui_textarea::TextArea;
 
 use crate::report::BenchmarkReport;
+use crate::config_manager::{
+    BenchmarkConfigType, ConfigStore, HttpConfigSave, TcpConfigSave, UdsConfigSave,
+    get_default_config_path,
+};
 
 /// The different pages our TUI can display
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -24,6 +28,7 @@ enum Page {
     Tcp,
     Uds,
     Results,
+    Configs,
     Help,
 }
 
@@ -34,6 +39,7 @@ impl Page {
             Page::Tcp => "TCP",
             Page::Uds => "UDS",
             Page::Results => "Results",
+            Page::Configs => "Configs",
             Page::Help => "Help",
         }
     }
@@ -43,7 +49,8 @@ impl Page {
             Page::Http => Page::Tcp,
             Page::Tcp => Page::Uds,
             Page::Uds => Page::Results,
-            Page::Results => Page::Help,
+            Page::Results => Page::Configs,
+            Page::Configs => Page::Help,
             Page::Help => Page::Http,
         }
     }
@@ -54,7 +61,8 @@ impl Page {
             Page::Tcp => Page::Http,
             Page::Uds => Page::Tcp,
             Page::Results => Page::Uds,
-            Page::Help => Page::Results,
+            Page::Configs => Page::Results,
+            Page::Help => Page::Configs,
         }
     }
 }
@@ -165,6 +173,14 @@ enum AppMode {
     Editing,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum ConfigAction {
+    None,
+    Save,
+    Load,
+    Delete,
+}
+
 struct AppState {
     page: Page,
     http_options: HttpOptions,
@@ -177,10 +193,32 @@ struct AppState {
     is_running: bool,
     current_field_value: String,
     message: Option<String>,
+    config_store: ConfigStore,
+    config_names: Vec<String>,
+    selected_config_index: Option<usize>,
+    config_action: ConfigAction,
+    config_name_input: String,
 }
 
 impl AppState {
     fn new() -> Self {
+        // Try to load existing configs
+        let config_store = match get_default_config_path() {
+            Ok(path) => {
+                if path.exists() {
+                    match ConfigStore::load(&path) {
+                        Ok(store) => store,
+                        Err(_) => ConfigStore::new(),
+                    }
+                } else {
+                    ConfigStore::new()
+                }
+            },
+            Err(_) => ConfigStore::new(),
+        };
+
+        let config_names = config_store.list();
+
         Self {
             page: Page::Http,
             http_options: HttpOptions::default(),
@@ -193,7 +231,147 @@ impl AppState {
             is_running: false,
             current_field_value: String::new(),
             message: None,
+            config_store,
+            config_names,
+            selected_config_index: None,
+            config_action: ConfigAction::None,
+            config_name_input: String::new(),
         }
+    }
+
+    fn save_current_config(&mut self, name: &str) -> Result<()> {
+        // Create the appropriate config type based on the current page
+        let config = match self.page {
+            Page::Http => {
+                let http_save = HttpConfigSave {
+                    url: self.http_options.url.clone(),
+                    method: Some(self.http_options.method.clone()),
+                    headers: if self.http_options.headers.is_empty() {
+                        None
+                    } else {
+                        Some(self.http_options.headers.clone())
+                    },
+                    body: self.http_options.body.clone(),
+                    concurrency: Some(self.http_options.concurrency),
+                    requests: Some(self.http_options.requests),
+                    duration: Some(self.http_options.duration),
+                    timeout: Some(self.http_options.timeout),
+                    keep_alive: self.http_options.keep_alive,
+                };
+                BenchmarkConfigType::Http(http_save)
+            },
+            Page::Tcp => {
+                let tcp_save = TcpConfigSave {
+                    address: self.tcp_options.address.clone(),
+                    data: self.tcp_options.data.clone(),
+                    expect: self.tcp_options.expect.clone(),
+                    concurrency: Some(self.tcp_options.concurrency),
+                    requests: Some(self.tcp_options.requests),
+                    duration: Some(self.tcp_options.duration),
+                    timeout: Some(self.tcp_options.timeout),
+                    keep_alive: self.tcp_options.keep_alive,
+                };
+                BenchmarkConfigType::Tcp(tcp_save)
+            },
+            Page::Uds => {
+                let uds_save = UdsConfigSave {
+                    path: self.uds_options.path.clone(),
+                    data: self.uds_options.data.clone(),
+                    expect: self.uds_options.expect.clone(),
+                    concurrency: Some(self.uds_options.concurrency),
+                    requests: Some(self.uds_options.requests),
+                    duration: Some(self.uds_options.duration),
+                    timeout: Some(self.uds_options.timeout),
+                    keep_alive: self.uds_options.keep_alive,
+                };
+                BenchmarkConfigType::Uds(uds_save)
+            },
+            _ => return Err(anyhow::anyhow!("Cannot save configuration from this page")),
+        };
+
+        // Add the config to the store
+        self.config_store.add(name, config);
+
+        // Save the config store to disk
+        if let Ok(path) = get_default_config_path() {
+            self.config_store.save(path)?;
+        }
+
+        // Update the config names list
+        self.config_names = self.config_store.list();
+
+        Ok(())
+    }
+
+    fn load_config(&mut self, name: &str) -> Result<()> {
+        // Get the config from the store
+        let config = match self.config_store.get(name) {
+            Some(config) => config,
+            None => return Err(anyhow::anyhow!("Configuration '{}' not found", name)),
+        };
+
+        // Load the config into the appropriate page
+        match config {
+            BenchmarkConfigType::Http(http_config) => {
+                self.http_options.url = http_config.url.clone();
+                self.http_options.method = http_config.method.clone().unwrap_or_else(|| "GET".to_string());
+                self.http_options.headers = http_config.headers.clone().unwrap_or_default();
+                self.http_options.body = http_config.body.clone();
+                self.http_options.concurrency = http_config.concurrency.unwrap_or(1);
+                self.http_options.requests = http_config.requests.unwrap_or(100);
+                self.http_options.duration = http_config.duration.unwrap_or(10);
+                self.http_options.timeout = http_config.timeout.unwrap_or(30000);
+                self.http_options.keep_alive = http_config.keep_alive;
+
+                // Switch to the HTTP page
+                self.page = Page::Http;
+            },
+            BenchmarkConfigType::Tcp(tcp_config) => {
+                self.tcp_options.address = tcp_config.address.clone();
+                self.tcp_options.data = tcp_config.data.clone();
+                self.tcp_options.expect = tcp_config.expect.clone();
+                self.tcp_options.concurrency = tcp_config.concurrency.unwrap_or(1);
+                self.tcp_options.requests = tcp_config.requests.unwrap_or(100);
+                self.tcp_options.duration = tcp_config.duration.unwrap_or(10);
+                self.tcp_options.timeout = tcp_config.timeout.unwrap_or(30000);
+                self.tcp_options.keep_alive = tcp_config.keep_alive;
+
+                // Switch to the TCP page
+                self.page = Page::Tcp;
+            },
+            BenchmarkConfigType::Uds(uds_config) => {
+                self.uds_options.path = uds_config.path.clone();
+                self.uds_options.data = uds_config.data.clone();
+                self.uds_options.expect = uds_config.expect.clone();
+                self.uds_options.concurrency = uds_config.concurrency.unwrap_or(1);
+                self.uds_options.requests = uds_config.requests.unwrap_or(100);
+                self.uds_options.duration = uds_config.duration.unwrap_or(10);
+                self.uds_options.timeout = uds_config.timeout.unwrap_or(30000);
+                self.uds_options.keep_alive = uds_config.keep_alive;
+
+                // Switch to the UDS page
+                self.page = Page::Uds;
+            },
+        }
+
+        Ok(())
+    }
+
+    fn delete_config(&mut self, name: &str) -> Result<()> {
+        // Remove the config from the store
+        if self.config_store.remove(name).is_none() {
+            return Err(anyhow::anyhow!("Configuration '{}' not found", name));
+        }
+
+        // Save the config store to disk
+        if let Ok(path) = get_default_config_path() {
+            self.config_store.save(path)?;
+        }
+
+        // Update the config names list
+        self.config_names = self.config_store.list();
+
+        Ok(())
     }
 }
 
@@ -512,14 +690,15 @@ fn ui(f: &mut Frame, app_state: &Arc<Mutex<AppState>>) {
         .split(f.area());
 
     // Create the tabs
-    let titles = [Page::Http, 
-        Page::Tcp, 
-        Page::Uds, 
-        Page::Results, 
+    let titles = [Page::Http,
+        Page::Tcp,
+        Page::Uds,
+        Page::Results,
+        Page::Configs,
         Page::Help].iter().map(|t| {
         Span::styled(t.as_str(), Style::default().fg(Color::White))
     }).collect::<Vec<_>>();
-    
+
     let tabs = Tabs::new(titles)
         .block(Block::default().borders(Borders::ALL).title("ThrustBench Performance Tool"))
         .select(match state.page {
@@ -527,7 +706,8 @@ fn ui(f: &mut Frame, app_state: &Arc<Mutex<AppState>>) {
             Page::Tcp => 1,
             Page::Uds => 2,
             Page::Results => 3,
-            Page::Help => 4,
+            Page::Configs => 4,
+            Page::Help => 5,
         })
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
@@ -540,6 +720,7 @@ fn ui(f: &mut Frame, app_state: &Arc<Mutex<AppState>>) {
         Page::Tcp => render_tcp_page(f, chunks[1], &state),
         Page::Uds => render_uds_page(f, chunks[1], &state),
         Page::Results => render_results_page(f, chunks[1], &state),
+        Page::Configs => render_configs_page(f, chunks[1], &state),
         Page::Help => render_help_page(f, chunks[1]),
     }
     
@@ -1091,6 +1272,120 @@ fn render_results_page(
     f.render_widget(report_widget, chunks[0]);
 }
 
+fn render_configs_page(
+    f: &mut Frame,
+    area: Rect,
+    state: &AppState,
+) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(vec![
+            Constraint::Length(3), // Title
+            Constraint::Min(10),   // Config list
+            Constraint::Length(3), // Action buttons
+            Constraint::Length(3), // Input field (for naming configs)
+        ])
+        .split(area);
+
+    let configs_block = Block::default()
+        .title("Saved Configurations")
+        .borders(Borders::ALL);
+    f.render_widget(configs_block, area);
+
+    // Title section
+    let title = Paragraph::new("Select a configuration to load, or save current settings.")
+        .style(Style::default().fg(Color::White));
+    f.render_widget(title, chunks[0]);
+
+    // Config list
+    if state.config_names.is_empty() {
+        let no_configs = Paragraph::new("No saved configurations found.")
+            .style(Style::default().fg(Color::Gray))
+            .block(Block::default().borders(Borders::ALL));
+        f.render_widget(no_configs, chunks[1]);
+    } else {
+        let configs: Vec<ListItem> = state.config_names.iter().enumerate()
+            .map(|(i, name)| {
+                let style = if Some(i) == state.selected_config_index {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+
+                // Get the config type
+                let config_type = match state.config_store.get(name) {
+                    Some(BenchmarkConfigType::Http(_)) => "HTTP",
+                    Some(BenchmarkConfigType::Tcp(_)) => "TCP",
+                    Some(BenchmarkConfigType::Uds(_)) => "UDS",
+                    None => "Unknown",
+                };
+
+                ListItem::new(format!("{} [{}]", name, config_type))
+                    .style(style)
+            })
+            .collect();
+
+        let configs_list = List::new(configs)
+            .block(Block::default().borders(Borders::ALL));
+
+        f.render_widget(configs_list, chunks[1]);
+    }
+
+    // Action buttons
+    let action_style = Style::default().fg(Color::White);
+    let selected_style = Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+
+    let load_button_style = if state.config_action == ConfigAction::Load {
+        selected_style
+    } else {
+        action_style
+    };
+
+    let save_button_style = if state.config_action == ConfigAction::Save {
+        selected_style
+    } else {
+        action_style
+    };
+
+    let delete_button_style = if state.config_action == ConfigAction::Delete {
+        selected_style
+    } else {
+        action_style
+    };
+
+    let action_buttons = vec![
+        Span::styled("[L]oad", load_button_style),
+        Span::raw("  "),
+        Span::styled("[S]ave", save_button_style),
+        Span::raw("  "),
+        Span::styled("[D]elete", delete_button_style),
+    ];
+
+    let action_paragraph = Paragraph::new(Line::from(action_buttons))
+        .block(Block::default().borders(Borders::ALL));
+
+    f.render_widget(action_paragraph, chunks[2]);
+
+    // Config name input field (only shown when saving)
+    if state.config_action == ConfigAction::Save {
+        let name_input_style = Style::default().fg(Color::Yellow);
+
+        let name_input = Paragraph::new(state.config_name_input.clone())
+            .style(name_input_style)
+            .block(Block::default().borders(Borders::ALL).title("Configuration name"));
+
+        f.render_widget(name_input, chunks[3]);
+
+        // If we're editing, render the textarea
+        if state.mode == AppMode::Editing {
+            f.render_widget(
+                &state.textarea,
+                centered_rect(60, 20, area)
+            );
+        }
+    }
+}
+
 fn render_help_page(
     f: &mut Frame,
     area: Rect,
@@ -1101,7 +1396,7 @@ fn render_help_page(
             Constraint::Min(0),
         ])
         .split(area);
-    
+
     let help_block = Block::default()
         .title("Help")
         .borders(Borders::ALL);

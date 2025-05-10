@@ -34,6 +34,8 @@ rustls = "0.23.27"
 ratatui = "0.29.0"
 crossterm = "0.29.0"
 tui-textarea = "0.7.0"
+# Configuration management
+dirs = "5.0.1"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
