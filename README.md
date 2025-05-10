@@ -1,4 +1,4 @@
-# Vibe - Rust Performance Benchmark Tool
+#  Rust Performance Benchmark Tool
 
 Vibe is a high-performance benchmark tool for testing HTTP, TCP, and Unix Domain Socket (UDS) server APIs. It allows you to simulate concurrent connections and measure performance metrics such as requests per second, response times, and throughput.
 
