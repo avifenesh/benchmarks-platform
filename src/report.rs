@@ -2,7 +2,6 @@ use std::time::Duration;
 use serde::{Serialize, Deserialize};
 use colored::*;
 use humantime::format_duration;
-use serde_json;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkReport {

@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use std::time::Duration;
 use std::fs;
-use std::str::FromStr;
-use crate::error::BenchmarkError;
 
 const DEFAULT_CONCURRENCY: usize = 1;
 const DEFAULT_REQUESTS: usize = 100;
@@ -10,6 +8,7 @@ const DEFAULT_DURATION: u64 = 10; // seconds
 const DEFAULT_TIMEOUT: u64 = 30000; // milliseconds
 const DEFAULT_METHOD: &str = "GET";
 
+#[allow(dead_code)]
 pub trait BenchmarkConfig {
     fn get_concurrency(&self) -> usize;
     fn get_requests(&self) -> usize;
@@ -18,6 +17,7 @@ pub trait BenchmarkConfig {
     fn is_keep_alive(&self) -> bool;
 }
 
+#[derive(Clone)]
 pub struct HttpConfig {
     pub url: String,
     pub method: String,
@@ -62,10 +62,7 @@ impl HttpConfig {
         let body = if let Some(b) = body {
             Some(b.into_bytes())
         } else if let Some(path) = body_file {
-            match fs::read(&path) {
-                Ok(content) => Some(content),
-                Err(_) => None,
-            }
+            fs::read(&path).ok()
         } else {
             None
         };
@@ -106,6 +103,7 @@ impl BenchmarkConfig for HttpConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct TcpConfig {
     pub address: String,
     pub data: Option<Vec<u8>>,
@@ -133,10 +131,7 @@ impl TcpConfig {
         let data = if let Some(d) = data {
             Some(d.into_bytes())
         } else if let Some(path) = data_file {
-            match fs::read(&path) {
-                Ok(content) => Some(content),
-                Err(_) => None,
-            }
+            fs::read(&path).ok()
         } else {
             None
         };
@@ -176,6 +171,7 @@ impl BenchmarkConfig for TcpConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct UdsConfig {
     pub path: PathBuf,
     pub data: Option<Vec<u8>>,
@@ -203,10 +199,7 @@ impl UdsConfig {
         let data = if let Some(d) = data {
             Some(d.into_bytes())
         } else if let Some(path) = data_file {
-            match fs::read(&path) {
-                Ok(content) => Some(content),
-                Err(_) => None,
-            }
+            fs::read(&path).ok()
         } else {
             None
         };

@@ -8,12 +8,13 @@ mod config;
 mod runner;
 mod report;
 mod error;
+mod tui;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 
     #[arg(short, long, help = "Number of concurrent connections")]
     concurrency: Option<usize>,
@@ -26,15 +27,18 @@ struct Cli {
 
     #[arg(short, long, help = "Timeout for each request in milliseconds")]
     timeout: Option<u64>,
-    
+
     #[arg(long, help = "Keep connections alive")]
     keep_alive: bool,
-    
+
     #[arg(short, long, help = "Path to config file")]
     config: Option<PathBuf>,
-    
+
     #[arg(long, help = "Output format (text, json)")]
     output: Option<String>,
+
+    #[arg(long, help = "Use interactive TUI mode")]
+    tui: bool,
 }
 
 #[derive(Subcommand)]
@@ -91,14 +95,26 @@ enum Commands {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    
-    match cli.command {
+
+    // If TUI mode is selected, start the interactive interface
+    if cli.tui {
+        return tui::run_tui().await;
+    }
+
+    // Non-interactive CLI mode requires a command
+    let command = cli.command.ok_or_else(|| {
+        eprintln!("Error: When not using TUI mode, a command (http, tcp, uds) is required");
+        eprintln!("Try running with --help for more information");
+        anyhow::anyhow!("No command specified")
+    })?;
+
+    match command {
         Commands::Http { url, method, headers, body, body_file } => {
             let config = config::HttpConfig::new(
-                url, 
-                method, 
-                headers, 
-                body, 
+                url,
+                method,
+                headers,
+                body,
                 body_file,
                 cli.concurrency,
                 cli.requests,
@@ -106,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
                 cli.timeout,
                 cli.keep_alive,
             );
-            
+
             let runner = runner::HttpRunner::new(config);
             let report = runner.run().await?;
             report::print_report(&report, cli.output.as_deref());
@@ -123,7 +139,7 @@ async fn main() -> anyhow::Result<()> {
                 cli.timeout,
                 cli.keep_alive,
             );
-            
+
             let runner = runner::TcpRunner::new(config);
             let report = runner.run().await?;
             report::print_report(&report, cli.output.as_deref());
@@ -140,12 +156,12 @@ async fn main() -> anyhow::Result<()> {
                 cli.timeout,
                 cli.keep_alive,
             );
-            
+
             let runner = runner::UdsRunner::new(config);
             let report = runner.run().await?;
             report::print_report(&report, cli.output.as_deref());
         }
     }
-    
+
     Ok(())
 }

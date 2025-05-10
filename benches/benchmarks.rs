@@ -16,7 +16,7 @@ fn bench_http(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     
     // Start HTTP server
-    let server_handle = thread::spawn(move || {
+    let _server_handle = thread::spawn(move || {
         rt.block_on(async {
             let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
             
@@ -79,7 +79,7 @@ fn bench_tcp(c: &mut Criterion) {
     let rt = Runtime::new().unwrap();
     
     // Start TCP server
-    let server_handle = thread::spawn(move || {
+    let _server_handle = thread::spawn(move || {
         rt.block_on(async {
             let listener = TcpListener::bind("127.0.0.1:8081").await.unwrap();
             
@@ -147,7 +147,7 @@ fn bench_uds(c: &mut Criterion) {
     let _ = fs::remove_file(socket_path);
     
     // Start UDS server
-    let server_handle = thread::spawn(move || {
+    let _server_handle = thread::spawn(move || {
         rt.block_on(async {
             let listener = UnixListener::bind(socket_path).unwrap();
             

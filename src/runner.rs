@@ -5,8 +5,6 @@ use tokio::task::JoinSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use hyper::Uri;
-use hyper::StatusCode;
-use futures::future::{join_all, BoxFuture};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::config::{BenchmarkConfig, HttpConfig, TcpConfig, UdsConfig};
@@ -49,7 +47,7 @@ impl HttpRunner {
         
         let concurrency = self.config.concurrency;
         let requests_per_worker = if self.config.requests > 0 {
-            (self.config.requests + concurrency - 1) / concurrency // ceiling division
+            self.config.requests.div_ceil(concurrency) // ceiling division
         } else {
             usize::MAX // run forever until duration is reached
         };
@@ -75,7 +73,7 @@ impl HttpRunner {
             let headers = self.config.headers.clone();
             let body = self.config.body.clone();
             let timeout_duration = self.config.timeout;
-            let keep_alive = self.config.is_keep_alive();
+            let _keep_alive = self.config.is_keep_alive();
             let completed_clone = completed_requests.clone();
             let successful_clone = successful_requests.clone();
             let bytes_sent_clone = bytes_sent.clone();
@@ -84,7 +82,7 @@ impl HttpRunner {
             let progress_clone = progress.clone();
             
             set.spawn(async move {
-                let mut conn_reuse = None;
+                let _conn_reuse: Option<()> = None;
                 
                 for _ in 0..requests_per_worker {
                     if Instant::now() >= stop_time {
@@ -102,7 +100,7 @@ impl HttpRunner {
                         timeout_duration,
                         false, // use HTTP/1.1
                     ).await {
-                        Ok((status, body, elapsed)) => {
+                        Ok((_status, body, elapsed)) => {
                             successful_clone.fetch_add(1, Ordering::Relaxed);
                             bytes_received_clone.fetch_add(body.len(), Ordering::Relaxed);
                             
@@ -132,7 +130,7 @@ impl HttpRunner {
         drop(tx);
         
         // Wait for all workers to complete or timeout
-        while (Instant::now() < stop_time) && (set.len() > 0) {
+        while (Instant::now() < stop_time) && (!set.is_empty()) {
             tokio::select! {
                 _ = sleep(Duration::from_millis(100)) => {
                     // Just a timeout to check if we've reached the stop time
@@ -236,7 +234,7 @@ impl TcpRunner {
         
         let concurrency = self.config.concurrency;
         let requests_per_worker = if self.config.requests > 0 {
-            (self.config.requests + concurrency - 1) / concurrency // ceiling division
+            self.config.requests.div_ceil(concurrency) // ceiling division
         } else {
             usize::MAX // run forever until duration is reached
         };
@@ -310,7 +308,7 @@ impl TcpRunner {
         drop(tx);
         
         // Wait for all workers to complete or timeout
-        while (Instant::now() < stop_time) && (set.len() > 0) {
+        while (Instant::now() < stop_time) && (!set.is_empty()) {
             tokio::select! {
                 _ = sleep(Duration::from_millis(100)) => {
                     // Just a timeout to check if we've reached the stop time
@@ -415,7 +413,7 @@ impl UdsRunner {
         
         let concurrency = self.config.concurrency;
         let requests_per_worker = if self.config.requests > 0 {
-            (self.config.requests + concurrency - 1) / concurrency // ceiling division
+            self.config.requests.div_ceil(concurrency) // ceiling division
         } else {
             usize::MAX // run forever until duration is reached
         };
@@ -489,7 +487,7 @@ impl UdsRunner {
         drop(tx);
         
         // Wait for all workers to complete or timeout
-        while (Instant::now() < stop_time) && (set.len() > 0) {
+        while (Instant::now() < stop_time) && (!set.is_empty()) {
             tokio::select! {
                 _ = sleep(Duration::from_millis(100)) => {
                     // Just a timeout to check if we've reached the stop time
