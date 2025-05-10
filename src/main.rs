@@ -31,7 +31,7 @@ struct Cli {
     #[arg(long, help = "Keep connections alive")]
     keep_alive: bool,
 
-    #[arg(short, long, help = "Path to config file")]
+    #[arg(long, help = "Path to config file")]
     config: Option<PathBuf>,
 
     #[arg(long, help = "Output format (text, json)")]
@@ -51,7 +51,7 @@ enum Commands {
         #[arg(short, long, help = "HTTP method")]
         method: Option<String>,
         
-        #[arg(short, long, help = "Headers in format 'key:value'")]
+        #[arg(long, help = "Headers in format 'key:value'")]
         headers: Option<Vec<String>>,
         
         #[arg(short, long, help = "Body content for POST/PUT")]

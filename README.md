@@ -43,8 +43,8 @@ thrustbench http http://example.com -c 10 -r 1000
 
 # POST request with custom headers and body
 thrustbench http https://api.example.com/users -m POST \
-  -h "Content-Type: application/json" \
-  -h "Authorization: Bearer token123" \
+  --headers "Content-Type: application/json" \
+  --headers "Authorization: Bearer token123" \
   -b '{"name": "Test User", "email": "test@example.com"}'
 
 # Benchmark for 30 seconds with connection keep-alive
