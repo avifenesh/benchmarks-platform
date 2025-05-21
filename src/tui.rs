@@ -602,8 +602,11 @@ async fn run_app(
                                         };
                                         
                                         let mut textarea = TextArea::new(vec![state.current_field_value.clone()]);
-                                textarea.set_hard_tab_indent(false);
-                                state.textarea = textarea;
+                                        // Configure the textarea for better editing experience
+                                        textarea.set_hard_tab_indent(false);
+                                        textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
+                                        textarea.set_block(Block::default().title(" Editing ").borders(Borders::ALL));
+                                        state.textarea = textarea;
                                         // Set cursor to end of text
                                         state.textarea.move_cursor(tui_textarea::CursorMove::End);
                                     }
@@ -1614,7 +1617,7 @@ fn render_help_page(
         ]),
         Line::from(" - Tab/Left/Right: Switch between tabs"),
         Line::from(" - Up/Down: Navigate through fields"),
-        Line::from(" - Enter: Edit the selected field"),
+        Line::from(" - i: Enter edit mode for the selected field"),
         Line::from(" - Esc: Exit edit mode"),
         Line::from(" - r: Run the configured benchmark"),
         Line::from(" - q: Quit the application"),
