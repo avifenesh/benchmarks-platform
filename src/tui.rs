@@ -383,14 +383,15 @@ pub async fn run_tui() -> Result<()> {
     let backend = ratatui::backend::CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Enable cursor for text input
-    terminal.show_cursor()?;
 
     // Create app state
     let app_state = Arc::new(Mutex::new(AppState::new()));
     let app_state_clone = app_state.clone();
 
     // Start the main loop
+    // Show cursor for text input
+    terminal.show_cursor()?;
+    
     let res = run_app(&mut terminal, app_state_clone).await;
 
     // Restore terminal
@@ -416,6 +417,9 @@ async fn run_app(
     loop {
         // Draw the UI
         terminal.draw(|f| ui(f, &app_state))?;
+        
+        // Make sure cursor is visible after each frame draw
+        terminal.show_cursor()?;
 
         // Handle input
         if let Event::Key(key) = event::read()? {
@@ -463,7 +467,9 @@ async fn run_app(
                                             ConfigAction::Save => {
                                                 // Start editing the config name
                                                 state.mode = AppMode::Editing;
-                                                state.textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                                let mut textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                                textarea.set_hard_tab_indent(false);
+                                                state.textarea = textarea;
                                                 // Set cursor to end of text
                                                 state.textarea.move_cursor(tui_textarea::CursorMove::End);
                                             },
@@ -487,7 +493,9 @@ async fn run_app(
                                                 // Default to save action when Enter is pressed on Configs page
                                                 state.config_action = ConfigAction::Save;
                                                 state.mode = AppMode::Editing;
-                                                state.textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                                let mut textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                                textarea.set_hard_tab_indent(false);
+                                                state.textarea = textarea;
                                                 // Set cursor to end of text
                                                 state.textarea.move_cursor(tui_textarea::CursorMove::End);
                                             },
@@ -542,7 +550,9 @@ async fn run_app(
                                             FocusField::None => String::new(),
                                         };
                                         
-                                        state.textarea = TextArea::new(vec![state.current_field_value.clone()]);
+                                        let mut textarea = TextArea::new(vec![state.current_field_value.clone()]);
+                                textarea.set_hard_tab_indent(false);
+                                state.textarea = textarea;
                                         // Set cursor to end of text
                                         state.textarea.move_cursor(tui_textarea::CursorMove::End);
                                     }
@@ -1000,9 +1010,13 @@ fn render_http_page(
         let text_area = centered_rect(60, 20, area);
         f.render_widget(&state.textarea, text_area);
         
-        // Show cursor at position
+        // Show cursor at position - make it more visible with block cursor
         let (x, y) = state.textarea.cursor();
-        f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
+        let cursor_x = text_area.x + x as u16 + 1;
+        let cursor_y = text_area.y + y as u16 + 1;
+        
+        // Set cursor position for actual terminal cursor
+        f.set_cursor_position((cursor_x, cursor_y));
     }
 }
 
@@ -1134,9 +1148,13 @@ fn render_tcp_page(
         let text_area = centered_rect(60, 20, area);
         f.render_widget(&state.textarea, text_area);
         
-        // Show cursor at position
+        // Show cursor at position - make it more visible with block cursor
         let (x, y) = state.textarea.cursor();
-        f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
+        let cursor_x = text_area.x + x as u16 + 1;
+        let cursor_y = text_area.y + y as u16 + 1;
+        
+        // Set cursor position for actual terminal cursor
+        f.set_cursor_position((cursor_x, cursor_y));
     }
 }
 
@@ -1268,9 +1286,13 @@ fn render_uds_page(
         let text_area = centered_rect(60, 20, area);
         f.render_widget(&state.textarea, text_area);
         
-        // Show cursor at position
+        // Show cursor at position - make it more visible with block cursor
         let (x, y) = state.textarea.cursor();
-        f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
+        let cursor_x = text_area.x + x as u16 + 1;
+        let cursor_y = text_area.y + y as u16 + 1;
+        
+        // Set cursor position for actual terminal cursor
+        f.set_cursor_position((cursor_x, cursor_y));
     }
 }
 
