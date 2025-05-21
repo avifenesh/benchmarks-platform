@@ -383,6 +383,9 @@ pub async fn run_tui() -> Result<()> {
     let backend = ratatui::backend::CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // Enable cursor for text input
+    terminal.show_cursor()?;
+
     // Create app state
     let app_state = Arc::new(Mutex::new(AppState::new()));
     let app_state_clone = app_state.clone();
@@ -992,12 +995,14 @@ fn render_http_page(
         
     f.render_widget(timeout_widget, inner_chunks[7]);
     
-    // If in edit mode, render the textarea over everything
+    // If in edit mode, render the textarea over everything with cursor
     if let AppMode::Editing = state.mode {
-        f.render_widget(
-            &state.textarea,
-            centered_rect(60, 20, area)
-        );
+        let text_area = centered_rect(60, 20, area);
+        f.render_widget(&state.textarea, text_area);
+        
+        // Show cursor at position
+        let (x, y) = state.textarea.cursor();
+        f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
     }
 }
 
@@ -1124,12 +1129,14 @@ fn render_tcp_page(
         
     f.render_widget(timeout_widget, inner_chunks[6]);
     
-    // If in edit mode, render the textarea over everything
+    // If in edit mode, render the textarea over everything with cursor
     if let AppMode::Editing = state.mode {
-        f.render_widget(
-            &state.textarea,
-            centered_rect(60, 20, area)
-        );
+        let text_area = centered_rect(60, 20, area);
+        f.render_widget(&state.textarea, text_area);
+        
+        // Show cursor at position
+        let (x, y) = state.textarea.cursor();
+        f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
     }
 }
 
@@ -1256,12 +1263,14 @@ fn render_uds_page(
         
     f.render_widget(timeout_widget, inner_chunks[6]);
     
-    // If in edit mode, render the textarea over everything
+    // If in edit mode, render the textarea over everything with cursor
     if let AppMode::Editing = state.mode {
-        f.render_widget(
-            &state.textarea,
-            centered_rect(60, 20, area)
-        );
+        let text_area = centered_rect(60, 20, area);
+        f.render_widget(&state.textarea, text_area);
+        
+        // Show cursor at position
+        let (x, y) = state.textarea.cursor();
+        f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
     }
 }
 
@@ -1486,12 +1495,14 @@ fn render_configs_page(
 
         f.render_widget(name_input, chunks[3]);
 
-        // If we're editing, render the textarea
+        // If we're editing, render the textarea with cursor
         if state.mode == AppMode::Editing {
-            f.render_widget(
-                &state.textarea,
-                centered_rect(60, 20, area)
-            );
+            let text_area = centered_rect(60, 20, area);
+            f.render_widget(&state.textarea, text_area);
+            
+            // Show cursor at position
+            let (x, y) = state.textarea.cursor();
+            f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
         }
     }
 }
