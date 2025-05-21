@@ -461,6 +461,8 @@ async fn run_app(
                                                 // Start editing the config name
                                                 state.mode = AppMode::Editing;
                                                 state.textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                                // Set cursor to end of text
+                                                state.textarea.move_cursor(tui_textarea::CursorMove::End);
                                             },
                                             ConfigAction::Delete => {
                                                 if let Some(index) = state.selected_config_index {
@@ -483,6 +485,8 @@ async fn run_app(
                                                 state.config_action = ConfigAction::Save;
                                                 state.mode = AppMode::Editing;
                                                 state.textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                                // Set cursor to end of text
+                                                state.textarea.move_cursor(tui_textarea::CursorMove::End);
                                             },
                                         }
                                     },
@@ -536,6 +540,8 @@ async fn run_app(
                                         };
                                         
                                         state.textarea = TextArea::new(vec![state.current_field_value.clone()]);
+                                        // Set cursor to end of text
+                                        state.textarea.move_cursor(tui_textarea::CursorMove::End);
                                     }
                                 }
                             },
