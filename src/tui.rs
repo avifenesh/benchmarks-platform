@@ -496,7 +496,25 @@ async fn run_app(
                                 // Configure the textarea for better editing experience
                                 textarea.set_hard_tab_indent(false);
                                 textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
-                                textarea.set_block(Block::default().title(" Editing ").borders(Borders::ALL));
+                                
+                                // Use the same title as the field being edited
+                                let title = match state.focus {
+                                    FocusField::Url => "URL",
+                                    FocusField::Method => "Method",
+                                    FocusField::Headers => "Headers (key:value)",
+                                    FocusField::Body => "Body",
+                                    FocusField::Address => "Address (host:port)",
+                                    FocusField::Path => "Socket Path",
+                                    FocusField::Data => "Data to Send",
+                                    FocusField::Expect => "Expected Response (regex)",
+                                    FocusField::Concurrency => "Concurrency",
+                                    FocusField::Requests => "Requests",
+                                    FocusField::Duration => "Duration (seconds)",
+                                    FocusField::Timeout => "Timeout (ms)",
+                                    FocusField::None => "",
+                                };
+                                
+                                textarea.set_block(Block::default().title(title).borders(Borders::ALL));
                                 state.textarea = textarea;
                                 
                                 // Set cursor to end of text
@@ -1063,18 +1081,107 @@ fn render_http_page(
         
     f.render_widget(timeout_widget, inner_chunks[7]);
     
-    // If in insert mode, render the textarea over everything with cursor
+    // If in insert mode, render the textarea in place of the field
     if let AppMode::Insert = state.mode {
-        let text_area = centered_rect(60, 20, area);
-        f.render_widget(&state.textarea, text_area);
-        
-        // Show cursor at position - make it more visible with block cursor
-        let (x, y) = state.textarea.cursor();
-        let cursor_x = text_area.x + x as u16 + 1;
-        let cursor_y = text_area.y + y as u16 + 1;
-        
-        // Set cursor position for actual terminal cursor
-        f.set_cursor_position((cursor_x, cursor_y));
+        match state.focus {
+            FocusField::Url => {
+                let text_area = inner_chunks[0];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Method => {
+                let text_area = inner_chunks[1];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Headers => {
+                let text_area = inner_chunks[2];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Body => {
+                let text_area = inner_chunks[3];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Concurrency => {
+                let text_area = inner_chunks[4];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Requests => {
+                let text_area = inner_chunks[5];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Duration => {
+                let text_area = inner_chunks[6];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Timeout => {
+                let text_area = inner_chunks[7];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            _ => {}
+        }
     }
 }
 
@@ -1201,18 +1308,107 @@ fn render_tcp_page(
         
     f.render_widget(timeout_widget, inner_chunks[6]);
     
-    // If in insert mode, render the textarea over everything with cursor
+    // If in insert mode, render the textarea in place of the field
     if let AppMode::Insert = state.mode {
-        let text_area = centered_rect(60, 20, area);
-        f.render_widget(&state.textarea, text_area);
-        
-        // Show cursor at position - make it more visible with block cursor
-        let (x, y) = state.textarea.cursor();
-        let cursor_x = text_area.x + x as u16 + 1;
-        let cursor_y = text_area.y + y as u16 + 1;
-        
-        // Set cursor position for actual terminal cursor
-        f.set_cursor_position((cursor_x, cursor_y));
+        match state.focus {
+            FocusField::Url => {
+                let text_area = inner_chunks[0];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Method => {
+                let text_area = inner_chunks[1];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Headers => {
+                let text_area = inner_chunks[2];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Body => {
+                let text_area = inner_chunks[3];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Concurrency => {
+                let text_area = inner_chunks[4];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Requests => {
+                let text_area = inner_chunks[5];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Duration => {
+                let text_area = inner_chunks[6];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Timeout => {
+                let text_area = inner_chunks[7];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            _ => {}
+        }
     }
 }
 
@@ -1339,18 +1535,107 @@ fn render_uds_page(
         
     f.render_widget(timeout_widget, inner_chunks[6]);
     
-    // If in insert mode, render the textarea over everything with cursor
+    // If in insert mode, render the textarea in place of the field
     if let AppMode::Insert = state.mode {
-        let text_area = centered_rect(60, 20, area);
-        f.render_widget(&state.textarea, text_area);
-        
-        // Show cursor at position - make it more visible with block cursor
-        let (x, y) = state.textarea.cursor();
-        let cursor_x = text_area.x + x as u16 + 1;
-        let cursor_y = text_area.y + y as u16 + 1;
-        
-        // Set cursor position for actual terminal cursor
-        f.set_cursor_position((cursor_x, cursor_y));
+        match state.focus {
+            FocusField::Url => {
+                let text_area = inner_chunks[0];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Method => {
+                let text_area = inner_chunks[1];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Headers => {
+                let text_area = inner_chunks[2];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Body => {
+                let text_area = inner_chunks[3];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Concurrency => {
+                let text_area = inner_chunks[4];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Requests => {
+                let text_area = inner_chunks[5];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Duration => {
+                let text_area = inner_chunks[6];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            FocusField::Timeout => {
+                let text_area = inner_chunks[7];
+                f.render_widget(&state.textarea, text_area);
+                
+                // Show cursor at position
+                let (x, y) = state.textarea.cursor();
+                let cursor_x = text_area.x + x as u16 + 1;
+                let cursor_y = text_area.y + y as u16 + 1;
+                
+                // Set cursor position for actual terminal cursor
+                f.set_cursor_position((cursor_x, cursor_y));
+            },
+            _ => {}
+        }
     }
 }
 
@@ -1577,7 +1862,7 @@ fn render_configs_page(
 
         // If we're in insert mode, render the textarea with cursor
         if state.mode == AppMode::Insert {
-            let text_area = centered_rect(60, 20, area);
+            let text_area = chunks[3];
             
             // Render the TextArea widget
             f.render_widget(&state.textarea, text_area);
