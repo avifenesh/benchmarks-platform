@@ -171,7 +171,6 @@ enum FocusField {
 enum AppMode {
     Normal,    // Like vim's normal mode
     Insert,    // Like vim's insert mode
-    Command,   // For potential command mode (like vim's :)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -426,13 +425,6 @@ async fn run_app(
                 let mut state = app_state.lock().await;
                 
                 match state.mode {
-                    AppMode::Command => {
-                        // Future implementation for command mode
-                        match key.code {
-                            KeyCode::Esc => state.mode = AppMode::Normal,
-                            _ => {}
-                        }
-                    },
                     AppMode::Normal => {
                         match key.code {
                             KeyCode::Char('q') => return Ok(()),
@@ -917,7 +909,6 @@ fn ui(f: &mut Frame, app_state: &Arc<Mutex<AppState>>) {
                 match state.mode {
                     AppMode::Normal => "NORMAL MODE | i: edit | r: run benchmark | q: quit | Tab: switch pages".to_string(),
                     AppMode::Insert => "INSERT MODE | Esc: exit insert mode | Enter: confirm changes".to_string(),
-                    AppMode::Command => "COMMAND MODE".to_string(),
                 }
             }
         }
