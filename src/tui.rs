@@ -439,57 +439,144 @@ async fn run_app(
                                 }
                             },
                             KeyCode::Enter => {
-                                // Enter edit mode for the current field
-                                state.mode = AppMode::Editing;
-                                
-                                // Initialize textarea with current value
-                                state.current_field_value = match state.focus {
-                                    FocusField::Url => state.http_options.url.clone(),
-                                    FocusField::Method => state.http_options.method.clone(),
-                                    FocusField::Headers => state.http_options.headers.join("\n"),
-                                    FocusField::Body => state.http_options.body.clone().unwrap_or_default(),
-                                    FocusField::Address => state.tcp_options.address.clone(),
-                                    FocusField::Path => state.uds_options.path.clone(),
-                                    FocusField::Data => match state.page {
-                                        Page::Tcp => state.tcp_options.data.clone().unwrap_or_default(),
-                                        Page::Uds => state.uds_options.data.clone().unwrap_or_default(),
-                                        _ => String::new(),
+                                match state.page {
+                                    Page::Configs => {
+                                        match state.config_action {
+                                            ConfigAction::Load => {
+                                                if let Some(index) = state.selected_config_index {
+                                                    if index < state.config_names.len() {
+                                                        let name = state.config_names[index].clone();
+                                                        if let Err(e) = state.load_config(&name) {
+                                                            state.message = Some(format!("Failed to load config: {}", e));
+                                                        } else {
+                                                            state.message = Some(format!("Loaded configuration: {}", name));
+                                                        }
+                                                    }
+                                                } else {
+                                                    state.message = Some("No configuration selected".to_string());
+                                                }
+                                                state.config_action = ConfigAction::None;
+                                            },
+                                            ConfigAction::Save => {
+                                                // Start editing the config name
+                                                state.mode = AppMode::Editing;
+                                                state.textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                            },
+                                            ConfigAction::Delete => {
+                                                if let Some(index) = state.selected_config_index {
+                                                    if index < state.config_names.len() {
+                                                        let name = state.config_names[index].clone();
+                                                        if let Err(e) = state.delete_config(&name) {
+                                                            state.message = Some(format!("Failed to delete config: {}", e));
+                                                        } else {
+                                                            state.message = Some(format!("Deleted configuration: {}", name));
+                                                            state.selected_config_index = None;
+                                                        }
+                                                    }
+                                                } else {
+                                                    state.message = Some("No configuration selected".to_string());
+                                                }
+                                                state.config_action = ConfigAction::None;
+                                            },
+                                            ConfigAction::None => {
+                                                // Default to save action when Enter is pressed on Configs page
+                                                state.config_action = ConfigAction::Save;
+                                                state.mode = AppMode::Editing;
+                                                state.textarea = TextArea::new(vec![state.config_name_input.clone()]);
+                                            },
+                                        }
                                     },
-                                    FocusField::Expect => match state.page {
-                                        Page::Tcp => state.tcp_options.expect.clone().unwrap_or_default(),
-                                        Page::Uds => state.uds_options.expect.clone().unwrap_or_default(),
-                                        _ => String::new(),
-                                    },
-                                    FocusField::Concurrency => match state.page {
-                                        Page::Http => state.http_options.concurrency.to_string(),
-                                        Page::Tcp => state.tcp_options.concurrency.to_string(),
-                                        Page::Uds => state.uds_options.concurrency.to_string(),
-                                        _ => String::new(),
-                                    },
-                                    FocusField::Requests => match state.page {
-                                        Page::Http => state.http_options.requests.to_string(),
-                                        Page::Tcp => state.tcp_options.requests.to_string(),
-                                        Page::Uds => state.uds_options.requests.to_string(),
-                                        _ => String::new(),
-                                    },
-                                    FocusField::Duration => match state.page {
-                                        Page::Http => state.http_options.duration.to_string(),
-                                        Page::Tcp => state.tcp_options.duration.to_string(),
-                                        Page::Uds => state.uds_options.duration.to_string(),
-                                        _ => String::new(),
-                                    },
-                                    FocusField::Timeout => match state.page {
-                                        Page::Http => state.http_options.timeout.to_string(),
-                                        Page::Tcp => state.tcp_options.timeout.to_string(),
-                                        Page::Uds => state.uds_options.timeout.to_string(),
-                                        _ => String::new(),
-                                    },
-                                    FocusField::None => String::new(),
-                                };
-                                
-                                state.textarea = TextArea::new(vec![state.current_field_value.clone()]);
+                                    _ => {
+                                        // Enter edit mode for the current field
+                                        state.mode = AppMode::Editing;
+                                        
+                                        // Initialize textarea with current value
+                                        state.current_field_value = match state.focus {
+                                            FocusField::Url => state.http_options.url.clone(),
+                                            FocusField::Method => state.http_options.method.clone(),
+                                            FocusField::Headers => state.http_options.headers.join("\n"),
+                                            FocusField::Body => state.http_options.body.clone().unwrap_or_default(),
+                                            FocusField::Address => state.tcp_options.address.clone(),
+                                            FocusField::Path => state.uds_options.path.clone(),
+                                            FocusField::Data => match state.page {
+                                                Page::Tcp => state.tcp_options.data.clone().unwrap_or_default(),
+                                                Page::Uds => state.uds_options.data.clone().unwrap_or_default(),
+                                                _ => String::new(),
+                                            },
+                                            FocusField::Expect => match state.page {
+                                                Page::Tcp => state.tcp_options.expect.clone().unwrap_or_default(),
+                                                Page::Uds => state.uds_options.expect.clone().unwrap_or_default(),
+                                                _ => String::new(),
+                                            },
+                                            FocusField::Concurrency => match state.page {
+                                                Page::Http => state.http_options.concurrency.to_string(),
+                                                Page::Tcp => state.tcp_options.concurrency.to_string(),
+                                                Page::Uds => state.uds_options.concurrency.to_string(),
+                                                _ => String::new(),
+                                            },
+                                            FocusField::Requests => match state.page {
+                                                Page::Http => state.http_options.requests.to_string(),
+                                                Page::Tcp => state.tcp_options.requests.to_string(),
+                                                Page::Uds => state.uds_options.requests.to_string(),
+                                                _ => String::new(),
+                                            },
+                                            FocusField::Duration => match state.page {
+                                                Page::Http => state.http_options.duration.to_string(),
+                                                Page::Tcp => state.tcp_options.duration.to_string(),
+                                                Page::Uds => state.uds_options.duration.to_string(),
+                                                _ => String::new(),
+                                            },
+                                            FocusField::Timeout => match state.page {
+                                                Page::Http => state.http_options.timeout.to_string(),
+                                                Page::Tcp => state.tcp_options.timeout.to_string(),
+                                                Page::Uds => state.uds_options.timeout.to_string(),
+                                                _ => String::new(),
+                                            },
+                                            FocusField::None => String::new(),
+                                        };
+                                        
+                                        state.textarea = TextArea::new(vec![state.current_field_value.clone()]);
+                                    }
+                                }
                             },
-                            _ => handle_field_navigation(key.code, &mut state),
+                            _ => {
+                                if state.page == Page::Configs {
+                                    match key.code {
+                                        KeyCode::Up => {
+                                            // Navigate up in config list
+                                            if let Some(index) = state.selected_config_index {
+                                                if index > 0 {
+                                                    state.selected_config_index = Some(index - 1);
+                                                }
+                                            } else if !state.config_names.is_empty() {
+                                                state.selected_config_index = Some(state.config_names.len() - 1);
+                                            }
+                                        },
+                                        KeyCode::Down => {
+                                            // Navigate down in config list
+                                            if let Some(index) = state.selected_config_index {
+                                                if index < state.config_names.len() - 1 {
+                                                    state.selected_config_index = Some(index + 1);
+                                                }
+                                            } else if !state.config_names.is_empty() {
+                                                state.selected_config_index = Some(0);
+                                            }
+                                        },
+                                        KeyCode::Char('l') | KeyCode::Char('L') => {
+                                            state.config_action = ConfigAction::Load;
+                                        },
+                                        KeyCode::Char('s') | KeyCode::Char('S') => {
+                                            state.config_action = ConfigAction::Save;
+                                        },
+                                        KeyCode::Char('d') | KeyCode::Char('D') => {
+                                            state.config_action = ConfigAction::Delete;
+                                        },
+                                        _ => {}
+                                    }
+                                } else {
+                                    handle_field_navigation(key.code, &mut state);
+                                }
+                            },
                         }
                     },
                     AppMode::Editing => {
@@ -498,98 +585,115 @@ async fn run_app(
                                 state.mode = AppMode::Navigation;
                             },
                             KeyCode::Enter => {
-                                // Save the changes and return to navigation mode
-                                let content = state.textarea.lines().join("\n");
-                                
-                                match state.focus {
-                                    FocusField::Url => state.http_options.url = content,
-                                    FocusField::Method => state.http_options.method = content,
-                                    FocusField::Headers => {
-                                        state.http_options.headers = content
-                                            .lines()
-                                            .map(|s| s.to_string())
-                                            .filter(|s| !s.is_empty())
-                                            .collect();
-                                    },
-                                    FocusField::Body => {
-                                        state.http_options.body = if content.is_empty() {
-                                            None
+                                if state.page == Page::Configs && state.config_action == ConfigAction::Save {
+                                    // Save configuration with entered name
+                                    let config_name = state.textarea.lines().join("");
+                                    if config_name.is_empty() {
+                                        state.message = Some("Please enter a configuration name".to_string());
+                                    } else {
+                                        if let Err(e) = state.save_current_config(&config_name) {
+                                            state.message = Some(format!("Failed to save config: {}", e));
                                         } else {
-                                            Some(content)
-                                        };
-                                    },
-                                    FocusField::Address => state.tcp_options.address = content,
-                                    FocusField::Path => state.uds_options.path = content,
-                                    FocusField::Data => {
-                                        match state.page {
-                                            Page::Tcp => state.tcp_options.data = if content.is_empty() {
+                                            state.message = Some(format!("Saved configuration: {}", config_name));
+                                            state.config_name_input = String::new();
+                                            state.config_action = ConfigAction::None;
+                                        }
+                                    }
+                                    state.mode = AppMode::Navigation;
+                                } else {
+                                    // Save the changes and return to navigation mode
+                                    let content = state.textarea.lines().join("\n");
+                                    
+                                    match state.focus {
+                                        FocusField::Url => state.http_options.url = content,
+                                        FocusField::Method => state.http_options.method = content,
+                                        FocusField::Headers => {
+                                            state.http_options.headers = content
+                                                .lines()
+                                                .map(|s| s.to_string())
+                                                .filter(|s| !s.is_empty())
+                                                .collect();
+                                        },
+                                        FocusField::Body => {
+                                            state.http_options.body = if content.is_empty() {
                                                 None
                                             } else {
                                                 Some(content)
-                                            },
-                                            Page::Uds => state.uds_options.data = if content.is_empty() {
-                                                None
-                                            } else {
-                                                Some(content)
-                                            },
-                                            _ => {}
-                                        }
-                                    },
-                                    FocusField::Expect => {
-                                        match state.page {
-                                            Page::Tcp => state.tcp_options.expect = if content.is_empty() {
-                                                None
-                                            } else {
-                                                Some(content)
-                                            },
-                                            Page::Uds => state.uds_options.expect = if content.is_empty() {
-                                                None
-                                            } else {
-                                                Some(content)
-                                            },
-                                            _ => {}
-                                        }
-                                    },
-                                    FocusField::Concurrency => {
-                                        let value = content.parse::<usize>().unwrap_or(1);
-                                        match state.page {
-                                            Page::Http => state.http_options.concurrency = value,
-                                            Page::Tcp => state.tcp_options.concurrency = value,
-                                            Page::Uds => state.uds_options.concurrency = value,
-                                            _ => {}
-                                        }
-                                    },
-                                    FocusField::Requests => {
-                                        let value = content.parse::<usize>().unwrap_or(100);
-                                        match state.page {
-                                            Page::Http => state.http_options.requests = value,
-                                            Page::Tcp => state.tcp_options.requests = value,
-                                            Page::Uds => state.uds_options.requests = value,
-                                            _ => {}
-                                        }
-                                    },
-                                    FocusField::Duration => {
-                                        let value = content.parse::<u64>().unwrap_or(10);
-                                        match state.page {
-                                            Page::Http => state.http_options.duration = value,
-                                            Page::Tcp => state.tcp_options.duration = value,
-                                            Page::Uds => state.uds_options.duration = value,
-                                            _ => {}
-                                        }
-                                    },
-                                    FocusField::Timeout => {
-                                        let value = content.parse::<u64>().unwrap_or(30000);
-                                        match state.page {
-                                            Page::Http => state.http_options.timeout = value,
-                                            Page::Tcp => state.tcp_options.timeout = value,
-                                            Page::Uds => state.uds_options.timeout = value,
-                                            _ => {}
-                                        }
-                                    },
-                                    FocusField::None => {}
+                                            };
+                                        },
+                                        FocusField::Address => state.tcp_options.address = content,
+                                        FocusField::Path => state.uds_options.path = content,
+                                        FocusField::Data => {
+                                            match state.page {
+                                                Page::Tcp => state.tcp_options.data = if content.is_empty() {
+                                                    None
+                                                } else {
+                                                    Some(content)
+                                                },
+                                                Page::Uds => state.uds_options.data = if content.is_empty() {
+                                                    None
+                                                } else {
+                                                    Some(content)
+                                                },
+                                                _ => {}
+                                            }
+                                        },
+                                        FocusField::Expect => {
+                                            match state.page {
+                                                Page::Tcp => state.tcp_options.expect = if content.is_empty() {
+                                                    None
+                                                } else {
+                                                    Some(content)
+                                                },
+                                                Page::Uds => state.uds_options.expect = if content.is_empty() {
+                                                    None
+                                                } else {
+                                                    Some(content)
+                                                },
+                                                _ => {}
+                                            }
+                                        },
+                                        FocusField::Concurrency => {
+                                            let value = content.parse::<usize>().unwrap_or(1);
+                                            match state.page {
+                                                Page::Http => state.http_options.concurrency = value,
+                                                Page::Tcp => state.tcp_options.concurrency = value,
+                                                Page::Uds => state.uds_options.concurrency = value,
+                                                _ => {}
+                                            }
+                                        },
+                                        FocusField::Requests => {
+                                            let value = content.parse::<usize>().unwrap_or(100);
+                                            match state.page {
+                                                Page::Http => state.http_options.requests = value,
+                                                Page::Tcp => state.tcp_options.requests = value,
+                                                Page::Uds => state.uds_options.requests = value,
+                                                _ => {}
+                                            }
+                                        },
+                                        FocusField::Duration => {
+                                            let value = content.parse::<u64>().unwrap_or(10);
+                                            match state.page {
+                                                Page::Http => state.http_options.duration = value,
+                                                Page::Tcp => state.tcp_options.duration = value,
+                                                Page::Uds => state.uds_options.duration = value,
+                                                _ => {}
+                                            }
+                                        },
+                                        FocusField::Timeout => {
+                                            let value = content.parse::<u64>().unwrap_or(30000);
+                                            match state.page {
+                                                Page::Http => state.http_options.timeout = value,
+                                                Page::Tcp => state.tcp_options.timeout = value,
+                                                Page::Uds => state.uds_options.timeout = value,
+                                                _ => {}
+                                            }
+                                        },
+                                        FocusField::None => {}
+                                    }
+                                    
+                                    state.mode = AppMode::Navigation;
                                 }
-                                
-                                state.mode = AppMode::Navigation;
                             },
                             _ => {
                                 if let KeyCode::Char(c) = key.code {

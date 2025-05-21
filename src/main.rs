@@ -4,9 +4,10 @@ use std::path::PathBuf;
 mod http;
 mod tcp;
 mod uds;
+mod config_manager;
+mod report;
 mod config;
 mod runner;
-mod report;
 mod error;
 mod tui;
 
