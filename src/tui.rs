@@ -169,8 +169,9 @@ enum FocusField {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum AppMode {
-    Navigation,
-    Editing,
+    Normal,    // Like vim's normal mode
+    Insert,    // Like vim's insert mode
+    Command,   // For potential command mode (like vim's :)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -225,7 +226,7 @@ impl AppState {
             tcp_options: TcpOptions::default(),
             uds_options: UdsOptions::default(),
             focus: FocusField::None,
-            mode: AppMode::Navigation,
+            mode: AppMode::Normal,
             textarea: TextArea::default(),
             reports: Vec::new(),
             is_running: false,
@@ -389,9 +390,7 @@ pub async fn run_tui() -> Result<()> {
     let app_state_clone = app_state.clone();
 
     // Start the main loop
-    // Show cursor for text input
-    terminal.show_cursor()?;
-    
+
     let res = run_app(&mut terminal, app_state_clone).await;
 
     // Restore terminal
@@ -427,7 +426,14 @@ async fn run_app(
                 let mut state = app_state.lock().await;
                 
                 match state.mode {
-                    AppMode::Navigation => {
+                    AppMode::Command => {
+                        // Future implementation for command mode
+                        match key.code {
+                            KeyCode::Esc => state.mode = AppMode::Normal,
+                            _ => {}
+                        }
+                    },
+                    AppMode::Normal => {
                         match key.code {
                             KeyCode::Char('q') => return Ok(()),
                             KeyCode::Tab => state.page = state.page.next(),
@@ -444,6 +450,65 @@ async fn run_app(
                                     state.is_running = true;
                                     state.message = Some("Benchmark started...".to_string());
                                 }
+                            },
+                            KeyCode::Char('i') => {
+                                // Enter insert mode (vim-like)
+                                state.mode = AppMode::Insert;
+                                
+                                // Initialize textarea with value based on focus
+                                state.current_field_value = match state.focus {
+                                    FocusField::Url => state.http_options.url.clone(),
+                                    FocusField::Method => state.http_options.method.clone(),
+                                    FocusField::Headers => state.http_options.headers.join("\n"),
+                                    FocusField::Body => state.http_options.body.clone().unwrap_or_default(),
+                                    FocusField::Address => state.tcp_options.address.clone(),
+                                    FocusField::Path => state.uds_options.path.clone(),
+                                    FocusField::Data => match state.page {
+                                        Page::Tcp => state.tcp_options.data.clone().unwrap_or_default(),
+                                        Page::Uds => state.uds_options.data.clone().unwrap_or_default(),
+                                        _ => String::new(),
+                                    },
+                                    FocusField::Expect => match state.page {
+                                        Page::Tcp => state.tcp_options.expect.clone().unwrap_or_default(),
+                                        Page::Uds => state.uds_options.expect.clone().unwrap_or_default(),
+                                        _ => String::new(),
+                                    },
+                                    FocusField::Concurrency => match state.page {
+                                        Page::Http => state.http_options.concurrency.to_string(),
+                                        Page::Tcp => state.tcp_options.concurrency.to_string(),
+                                        Page::Uds => state.uds_options.concurrency.to_string(),
+                                        _ => String::new(),
+                                    },
+                                    FocusField::Requests => match state.page {
+                                        Page::Http => state.http_options.requests.to_string(),
+                                        Page::Tcp => state.tcp_options.requests.to_string(),
+                                        Page::Uds => state.uds_options.requests.to_string(),
+                                        _ => String::new(),
+                                    },
+                                    FocusField::Duration => match state.page {
+                                        Page::Http => state.http_options.duration.to_string(),
+                                        Page::Tcp => state.tcp_options.duration.to_string(),
+                                        Page::Uds => state.uds_options.duration.to_string(),
+                                        _ => String::new(),
+                                    },
+                                    FocusField::Timeout => match state.page {
+                                        Page::Http => state.http_options.timeout.to_string(),
+                                        Page::Tcp => state.tcp_options.timeout.to_string(),
+                                        Page::Uds => state.uds_options.timeout.to_string(),
+                                        _ => String::new(),
+                                    },
+                                    FocusField::None => String::new(),
+                                };
+                                
+                                let mut textarea = TextArea::new(vec![state.current_field_value.clone()]);
+                                // Configure the textarea for better editing experience
+                                textarea.set_hard_tab_indent(false);
+                                textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
+                                textarea.set_block(Block::default().title(" Editing ").borders(Borders::ALL));
+                                state.textarea = textarea;
+                                
+                                // Set cursor to end of text
+                                state.textarea.move_cursor(tui_textarea::CursorMove::End);
                             },
                             KeyCode::Enter => {
                                 match state.page {
@@ -466,12 +531,9 @@ async fn run_app(
                                             },
                                             ConfigAction::Save => {
                                                 // Start editing the config name
-                                                state.mode = AppMode::Editing;
-                                                let mut textarea = TextArea::new(vec![state.config_name_input.clone()]);
-                                                textarea.set_hard_tab_indent(false);
-                                                state.textarea = textarea;
-                                                // Set cursor to end of text
-                                                state.textarea.move_cursor(tui_textarea::CursorMove::End);
+                                                // Keep in normal mode - user needs to press 'i' to edit
+                                                state.config_name_input = String::new();
+                                                state.message = Some("Press 'i' to enter edit mode".to_string());
                                             },
                                             ConfigAction::Delete => {
                                                 if let Some(index) = state.selected_config_index {
@@ -492,20 +554,17 @@ async fn run_app(
                                             ConfigAction::None => {
                                                 // Default to save action when Enter is pressed on Configs page
                                                 state.config_action = ConfigAction::Save;
-                                                state.mode = AppMode::Editing;
-                                                let mut textarea = TextArea::new(vec![state.config_name_input.clone()]);
-                                                textarea.set_hard_tab_indent(false);
-                                                state.textarea = textarea;
-                                                // Set cursor to end of text
-                                                state.textarea.move_cursor(tui_textarea::CursorMove::End);
+                                                // Keep in normal mode - user needs to press 'i' to edit
+                                                state.config_name_input = String::new();
+                                                state.message = Some("Press 'i' to enter edit mode".to_string());
                                             },
                                         }
                                     },
                                     _ => {
-                                        // Enter edit mode for the current field
-                                        state.mode = AppMode::Editing;
+                                        // Just focus the field but don't enter insert mode yet
+                                        // User will need to press 'i' to start editing
+                                        state.message = Some("Press 'i' to enter edit mode".to_string());
                                         
-                                        // Initialize textarea with current value
                                         state.current_field_value = match state.focus {
                                             FocusField::Url => state.http_options.url.clone(),
                                             FocusField::Method => state.http_options.method.clone(),
@@ -598,10 +657,10 @@ async fn run_app(
                             },
                         }
                     },
-                    AppMode::Editing => {
+                    AppMode::Insert => {
                         match key.code {
                             KeyCode::Esc => {
-                                state.mode = AppMode::Navigation;
+                                state.mode = AppMode::Normal;
                             },
                             KeyCode::Enter => {
                                 if state.page == Page::Configs && state.config_action == ConfigAction::Save {
@@ -618,7 +677,7 @@ async fn run_app(
                                             state.config_action = ConfigAction::None;
                                         }
                                     }
-                                    state.mode = AppMode::Navigation;
+                                    state.mode = AppMode::Normal;
                                 } else {
                                     // Save the changes and return to navigation mode
                                     let content = state.textarea.lines().join("\n");
@@ -711,7 +770,7 @@ async fn run_app(
                                         FocusField::None => {}
                                     }
                                     
-                                    state.mode = AppMode::Navigation;
+                                    state.mode = AppMode::Normal;
                                 }
                             },
                             _ => {
@@ -854,7 +913,12 @@ fn ui(f: &mut Frame, app_state: &Arc<Mutex<AppState>>) {
             if state.is_running {
                 "Benchmark is running...".to_string()
             } else {
-                "Press 'r' to run benchmark | 'q' to quit | Tab to switch pages".to_string()
+                // Show mode-specific status
+                match state.mode {
+                    AppMode::Normal => "NORMAL MODE | i: edit | r: run benchmark | q: quit | Tab: switch pages".to_string(),
+                    AppMode::Insert => "INSERT MODE | Esc: exit insert mode | Enter: confirm changes".to_string(),
+                    AppMode::Command => "COMMAND MODE".to_string(),
+                }
             }
         }
     };
@@ -1005,8 +1069,8 @@ fn render_http_page(
         
     f.render_widget(timeout_widget, inner_chunks[7]);
     
-    // If in edit mode, render the textarea over everything with cursor
-    if let AppMode::Editing = state.mode {
+    // If in insert mode, render the textarea over everything with cursor
+    if let AppMode::Insert = state.mode {
         let text_area = centered_rect(60, 20, area);
         f.render_widget(&state.textarea, text_area);
         
@@ -1143,8 +1207,8 @@ fn render_tcp_page(
         
     f.render_widget(timeout_widget, inner_chunks[6]);
     
-    // If in edit mode, render the textarea over everything with cursor
-    if let AppMode::Editing = state.mode {
+    // If in insert mode, render the textarea over everything with cursor
+    if let AppMode::Insert = state.mode {
         let text_area = centered_rect(60, 20, area);
         f.render_widget(&state.textarea, text_area);
         
@@ -1281,8 +1345,8 @@ fn render_uds_page(
         
     f.render_widget(timeout_widget, inner_chunks[6]);
     
-    // If in edit mode, render the textarea over everything with cursor
-    if let AppMode::Editing = state.mode {
+    // If in insert mode, render the textarea over everything with cursor
+    if let AppMode::Insert = state.mode {
         let text_area = centered_rect(60, 20, area);
         f.render_widget(&state.textarea, text_area);
         
@@ -1517,12 +1581,14 @@ fn render_configs_page(
 
         f.render_widget(name_input, chunks[3]);
 
-        // If we're editing, render the textarea with cursor
-        if state.mode == AppMode::Editing {
+        // If we're in insert mode, render the textarea with cursor
+        if state.mode == AppMode::Insert {
             let text_area = centered_rect(60, 20, area);
+            
+            // Render the TextArea widget
             f.render_widget(&state.textarea, text_area);
             
-            // Show cursor at position
+            // Show cursor position
             let (x, y) = state.textarea.cursor();
             f.set_cursor_position((text_area.x + x as u16 + 1, text_area.y + y as u16 + 1));
         }
